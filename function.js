@@ -1,3 +1,5 @@
+var crypto = require('crypto');
+
 async function handler(event) {
   var response = event.response;
   response.statusDescription = 'OK';
@@ -20,17 +22,9 @@ async function handler(event) {
     return response;
   }
 
-  var cryptoKey = await crypto.subtle.importKey(
-    'raw',
-    keyBytes,
-    { name: 'HMAC', hash: 'SHA-256' },
-    false,
-    ['sign']
-  );
-  var sig = new Uint8Array(
-    await crypto.subtle.sign('HMAC', cryptoKey, dataBytes)
-  );
-  var out = base64UrlEncode(sig);
+  var hmac = crypto.createHmac('sha256', keyBytes);
+  hmac.update(dataBytes);
+  var out = hmac.digest('base64url');
 
   response.statusCode = 200;
   response.body = { encoding: 'text', data: out };
@@ -46,12 +40,3 @@ function base64UrlDecode(str) {
   return bytes;
 }
 
-function base64UrlEncode(bytes) {
-  var binary = '';
-  for (var i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
-  var base64 = btoa(binary)
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=+$/, '');
-  return base64;
-}
