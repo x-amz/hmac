@@ -20,8 +20,8 @@ export class XAmzHmacStack extends cdk.Stack {
     });
 
     const cfFunction = new cloudfront.Function(this, 'CloudFrontFunction', {
-      functionName: 'xAmzDateFunction',
-      comment: 'Return current X-Amz-Date string',
+      functionName: 'xAmzHmacFunction',
+      comment: 'Return HMAC via query parameters',
       runtime: cloudfront.FunctionRuntime.JS_2_0,
       code: cloudfront.FunctionCode.fromFile({ filePath: 'function.js' }),
     });
