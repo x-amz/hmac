@@ -36,7 +36,7 @@ export class XAmzHmacStack extends cdk.Stack {
         functionAssociations: [
           {
             function: cfFunction,
-            eventType: cloudfront.FunctionEventType.VIEWER_RESPONSE,
+            eventType: cloudfront.FunctionEventType.VIEWER_REQUEST,
           },
         ],
       },

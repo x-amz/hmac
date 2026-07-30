@@ -4,15 +4,29 @@ const fs = require('node:fs');
 const test = require('node:test');
 const vm = require('node:vm');
 
-const context = { Buffer, require };
+// Mirror the CloudFront Functions runtime 2.0 surface: crypto and atob are
+// available, Buffer and the rest of the Node.js standard library are not.
+const context = {
+  atob: (data) => Buffer.from(data, 'base64').toString('binary'),
+  require: (id) => {
+    assert.equal(id, 'crypto');
+    return crypto;
+  },
+};
 vm.runInNewContext(fs.readFileSync('function.js', 'utf8'), context);
 
 async function request(uri) {
   return context.handler({
     request: { uri },
-    response: { headers: {} },
   });
 }
+
+test('does not require an origin response to handle a request', async () => {
+  const key = Buffer.from('secret').toString('base64url');
+  const response = await request(`/${key}/hello`);
+
+  assert.equal(response.statusCode, 303);
+});
 
 test('redirects a single HMAC to its chainable digest URL', async () => {
   const key = Buffer.from('secret').toString('base64url');
@@ -22,6 +36,15 @@ test('redirects a single HMAC to its chainable digest URL', async () => {
   assert.equal(response.statusCode, 303);
   assert.equal(response.headers.location.value, `/${expected}`);
   assert.equal(response.headers['cache-control'].value, 'no-store');
+});
+
+test('renders the digest after following the completion redirect', async () => {
+  const digest = crypto.createHmac('sha256', 'secret').update('hello').digest('base64url');
+  const response = await request(`/${digest}`);
+
+  assert.equal(response.statusCode, 200);
+  assert.equal(response.body.data, digest);
+  assert.equal(response.headers.location, undefined);
 });
 
 test('derives a complete SigV4 signing key with the shortcut', async () => {
